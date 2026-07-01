@@ -5,7 +5,7 @@
 
 import { run } from "./reduck.js";
 import { scripts } from "./lk.scripts.js";
-import type { Card, Experience, Education } from "./lk.schema.js";
+import type { Card, Experience, Education, Company } from "./lk.schema.js";
 
 // LinkedIn's profile scripts key off publicId — the /in/<publicId> slug. Accept a
 // full profile URL or a bare publicId.
@@ -30,3 +30,9 @@ export const getProfile = async (profile: string): Promise<Profile> => {
 	]);
 	return { publicId, card, experience, education };
 };
+
+// get_company_info — a single run (no composition), but the Lk client owns it so the
+// agent's tool speaks one client. Accepts a company URL or a bare slug (the script's own
+// contract). Re-exports the Company type as the tool's persisted shape.
+export type { Company };
+export const getCompany = (company: string): Promise<Company> => run<Company>(scripts.company, { url: company });

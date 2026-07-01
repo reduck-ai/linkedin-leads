@@ -130,6 +130,8 @@ const serialize = (value: unknown, p: NotionProp): Record<string, unknown> => {
 			return { [p.type]: { name: String(value) } };
 		case "multi_select":
 			return { multi_select: (value as string[]).map((name) => ({ name })) };
+		case "relation":
+			return { relation: (value as string[]).map((id) => ({ id })) };
 		default:
 			throw new Error(`notion.upsert: can't write a "${p.type}" property`);
 	}
@@ -168,6 +170,16 @@ export const upsert = async (
 	const body = { parent: { type: "data_source_id", data_source_id: dsId }, properties };
 	const { id } = JSON.parse(await ntn(["api", "-X", "POST", "/v1/pages", "-d", JSON.stringify(body)]));
 	return { id, url: pageUrl(id), created: true };
+};
+
+// pageTitle(pageId) — a page's title property as plain text (its "Name"). Lets a caller
+// derive one record's identity from another it points at (a Lead's name from its Person).
+export const pageTitle = async (pageId: string): Promise<string> => {
+	const page = JSON.parse(await ntn(["api", `/v1/pages/${pageId}`])) as {
+		properties: Record<string, { type: string; title?: { plain_text: string }[] }>;
+	};
+	const title = Object.values(page.properties).find((p) => p.type === "title")?.title ?? [];
+	return title.map((t) => t.plain_text).join("");
 };
 
 // describe(model) — a JSON Schema of the model's writable properties. The data source

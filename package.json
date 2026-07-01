@@ -11,7 +11,7 @@
 		"build": "tsc"
 	},
 	"dependencies": {
-		"@reduck-ai/cli": "^2.0.19",
+		"@reduck-ai/cli": "^2.0.21",
 		"commander": "^12.1.0",
 		"yaml": "^2.9.0"
 	},

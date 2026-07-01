@@ -45,3 +45,56 @@ export interface Education {
     description: string | null;
   }[];
 }
+
+export interface Company {
+  name: string;
+  phone?: string | null;
+  logoUrl?: string | null;
+  tagline?: string | null;
+  /**
+   * Inner numeric LinkedIn company ID from urn:li:fsd_company:N (e.g. 18834371 for almapay). Stable join key.
+   */
+  companyId: string;
+  locations?: {
+    city?: string | null;
+    line1?: string | null;
+    line2?: string | null;
+    country?: string | null;
+    postalCode?: string | null;
+    isHeadquarter?: boolean;
+    geographicArea?: string | null;
+  }[];
+  industries?: string[];
+  /**
+   * Company-declared website, returned verbatim — can be a linkedin.com self-link when the company set its own LinkedIn page as website (seen on stealth pages). Not normalized; filter linkedin.com values downstream if you need a real external site.
+   */
+  websiteUrl?: string | null;
+  description?: string | null;
+  foundedYear?: number | null;
+  linkedinUrl?: string | null;
+  headquarters?: {
+    city?: string | null;
+    line1?: string | null;
+    line2?: string | null;
+    country?: string | null;
+    postalCode?: string | null;
+    geographicArea?: string | null;
+  } | null;
+  specialities?: string[];
+  /**
+   * Count of LinkedIn members associated with the page, not the declared size — on catch-all/stealth pages it can wildly exceed employeeCountRange (battle-tested: 5,933 members on a page declaring 2-10). Use employeeCountRange for the company's self-declared size.
+   */
+  employeeCount?: number | null;
+  followerCount?: number | null;
+  /**
+   * Canonical slug as LinkedIn returns it — may differ from the requested one if the page was renamed/redirected.
+   */
+  universalName: string;
+  employeeCountRange?: {
+    /**
+     * null for open-ended ranges like 10K+
+     */
+    end?: number | null;
+    start?: number | null;
+  } | null;
+}

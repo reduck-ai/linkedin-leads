@@ -19,6 +19,19 @@ program
 	.description("Profile + experience + education (three runs), assembled and written to Notion.")
 	.action(async (profile) => out(await tools.getProfile(profile)));
 
+program
+	.command("get-company")
+	.argument("<company>", "company LinkedIn URL or bare slug")
+	.description("LinkedIn company info (one run), written to Notion (idempotent on LinkedIn URL).")
+	.action(async (company) => out(await tools.getCompany(company)));
+
+program
+	.command("put-lead")
+	.description("Set up a Lead (a person; Name derived from them) from ids the get-* tools returned.")
+	.requiredOption("--person <id>", "the Person's Notion page id (get-profile)")
+	.option("--company <id>", "the Company's Notion page id (get-company), when known")
+	.action(async ({ person, company }) => out(await tools.putLead({ personId: person, companyId: company })));
+
 program.parseAsync().catch((e: Error) => {
 	console.error(`error: ${e.message}`);
 	process.exit(1);
