@@ -109,6 +109,67 @@ const fragment = (p: NotionProp): Record<string, unknown> | null => {
 	}
 };
 
+// Inverse of fragment: a value + its Notion property type → the API write payload. Covers
+// the writable scalar types; relation/people need id resolution, so we refuse them loudly
+// rather than write a wrong shape silently.
+const serialize = (value: unknown, p: NotionProp): Record<string, unknown> => {
+	switch (p.type) {
+		case "title":
+		case "rich_text":
+			return { [p.type]: [{ text: { content: String(value) } }] };
+		case "url":
+		case "email":
+		case "phone_number":
+		case "number":
+		case "checkbox":
+			return { [p.type]: value };
+		case "date":
+			return { date: { start: String(value) } };
+		case "select":
+		case "status":
+			return { [p.type]: { name: String(value) } };
+		case "multi_select":
+			return { multi_select: (value as string[]).map((name) => ({ name })) };
+		default:
+			throw new Error(`notion.upsert: can't write a "${p.type}" property`);
+	}
+};
+
+// upsert(model, record, keyProp) — write a record to a data source, idempotently by keyProp:
+// the page whose keyProp equals record[keyProp] is updated in place, else a new page is
+// created. The inverse of describe; model semantics stay with the caller. Returns the page
+// id, its url, and whether it was created.
+const pageUrl = (id: string): string => `https://www.notion.so/${id.replace(/-/g, "")}`;
+
+export const upsert = async (
+	model: string,
+	record: object,
+	keyProp: string
+): Promise<{ id: string; url: string; created: boolean }> => {
+	const dsId = await resolveDsId(model);
+	const ds: DataSource = JSON.parse(await ntn(["api", `/v1/data_sources/${dsId}`]));
+	const fields = record as Record<string, unknown>;
+	const properties: Record<string, unknown> = {};
+	for (const [name, value] of Object.entries(fields)) {
+		const p = ds.properties[name];
+		if (!p) throw new Error(`notion.upsert: no property "${name}" on "${model}"`);
+		if (value != null) properties[name] = serialize(value, p);
+	}
+	const key = ds.properties[keyProp];
+	if (!key) throw new Error(`notion.upsert: no key property "${keyProp}" on "${model}"`);
+	const filter = JSON.stringify({ property: keyProp, [key.type]: { equals: fields[keyProp] } });
+	const { results } = JSON.parse(await ntn(["datasources", "query", dsId, "--filter", filter, "--json"]));
+	const page = (results as { id: string }[])[0];
+	const write = (args: string[]) => ntn(["api", ...args, "-d", JSON.stringify({ properties })]);
+	if (page) {
+		await write(["-X", "PATCH", `/v1/pages/${page.id}`]);
+		return { id: page.id, url: pageUrl(page.id), created: false };
+	}
+	const body = { parent: { type: "data_source_id", data_source_id: dsId }, properties };
+	const { id } = JSON.parse(await ntn(["api", "-X", "POST", "/v1/pages", "-d", JSON.stringify(body)]));
+	return { id, url: pageUrl(id), created: true };
+};
+
 // describe(model) — a JSON Schema of the model's writable properties. The data source
 // id rides in `$id` so a writer can recover it; `title` names the dump file. Properties
 // are sorted by name so the file is stable and `git diff` reads as a changelog.

@@ -8,6 +8,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import { parse } from "yaml";
 
 const exec = promisify(execFile);
 const require = createRequire(import.meta.url);
@@ -27,10 +28,28 @@ function reduckArgv(): string[] {
 
 export type Args = Record<string, string | number | boolean>;
 
-export const run = async (addr: string, args: Args): Promise<unknown> => {
+export const run = async <T = unknown>(addr: string, args: Args): Promise<T> => {
 	const pairs = Object.entries(args).map(([k, v]) => `${k}=${v}`);
 	const [cmd, ...pre] = reduckArgv();
 	// `reduck run` prints the result as JSON on stdout (run id + errors on stderr).
 	const { stdout } = await exec(cmd, [...pre, "run", "--script", addr, ...pairs]);
-	return JSON.parse(stdout);
+	return JSON.parse(stdout) as T;
+};
+
+// A script's contract — the ground truth. input/output are JSON Schemas (server-enforced
+// on every run); `bind` compiles `output` into a TS type.
+export interface Contract {
+	name: string;
+	input: object;
+	output: object;
+}
+
+// read(addr) — fetch a script's contract. `reduck read` prints YAML (no --json) with a
+// trailing "Success rate…" footer that isn't YAML; strip it before parsing. Swap the
+// strip for --json once the CLI grows it.
+export const read = async (addr: string): Promise<Contract> => {
+	const [cmd, ...pre] = reduckArgv();
+	const { stdout } = await exec(cmd, [...pre, "read", addr]);
+	const footer = stdout.search(/^Success rate/m);
+	return parse(footer < 0 ? stdout : stdout.slice(0, footer)) as Contract;
 };

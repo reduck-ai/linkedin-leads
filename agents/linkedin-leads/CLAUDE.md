@@ -21,12 +21,13 @@ and the output against that contract on every run.
 3. **Qualify** — score the reactors against `knowledge/icp.md`. Keep only the
    shortlist worth a human's attention; a viral post's reactions are mostly noise.
 4. **Enrich** — shortlist only: `leads get-profile <profileUrl|publicId>`. This is the one
-   composite tool: it runs the three profile scripts and **writes the lead to your record store**.
+   composite tool: it runs the three profile scripts and **upserts the lead to Notion**
+   (idempotent on the unique "LinkedIn URL"; set `NOTION_PEOPLE_DS`).
 
 ## Why two binaries
 
 `reduck` runs any single base script (contract enforced server-side). `leads` adds only
-what reduck can't: composing several calls and persisting to your store (`LEADS_ADAPTER`).
+what reduck can't: composing several calls and writing the result to your CRM.
 If a step is one base-script call, use `reduck` directly — don't wrap it.
 
 ## Rules

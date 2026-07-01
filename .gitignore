@@ -1,5 +1,8 @@
 node_modules/
 dist/
 
+# local env (the committed .env.example is the contract)
+.env
+
 # lead output (run artifact)
 *.jsonl
